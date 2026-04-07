@@ -1,0 +1,17 @@
+namespace: rhvp
+name: portworx
+version: 1.0.0
+readme: README.md
+authors:
+  - Drew Minnear <dminnear@redhat.com>
+description: Playbooks related to using Portworx inside Validated Patterns
+license_file: 'LICENSE'
+tags: ['infrastructure', 'cloud']
+dependencies:
+  kubernetes.core: '*'
+  amazon.aws: '*'
+repository: https://github.com/dminnear-rh/rhvp.portworx
+documentation: https://validatedpatterns.io
+homepage: https://validatedpatterns.io
+issues: https://github.com/dminnear-rh/rhvp.portworx/issues
+build_ignore: []

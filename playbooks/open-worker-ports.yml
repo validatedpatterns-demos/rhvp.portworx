@@ -1,0 +1,29 @@
+---
+- name: Basic connectivity test
+  hosts: localhost
+  connection: local
+  become: true
+  vars:
+    aws_access_key_id: "{{ aws_access_key_id }}"
+    aws_secret_access_key: "{{ aws_secret_access_key }}"
+    primary_kubeconfig: "{{ primary_kubeconfig }}"
+    secondary_kubeconfig: "{{ secondary_kubeconfig }}"
+
+  tasks:
+    - name: Open worker ports for primary cluster
+      ansible.builtin.import_role:
+        name: open-worker-ports
+      vars:
+        kubeconfig: "{{ primary_kubeconfig }}"
+        aws_access_key_id: "{{ aws_access_key_id }}"
+        aws_secret_access_key: "{{ aws_secret_access_key }}"
+        aws_region: "{{ aws_primary_region }}"
+
+    - name: Open worker ports for secondary cluster
+      ansible.builtin.import_role:
+        name: open-worker-ports
+      vars:
+        kubeconfig: "{{ secondary_kubeconfig }}"
+        aws_access_key_id: "{{ aws_access_key_id }}"
+        aws_secret_access_key: "{{ aws_secret_access_key }}"
+        aws_region: "{{ aws_secondary_region }}"
