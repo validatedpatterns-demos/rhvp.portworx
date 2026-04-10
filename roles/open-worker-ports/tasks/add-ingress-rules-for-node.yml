@@ -3,14 +3,28 @@
   ansible.builtin.set_fact:
     aws_region: "{{ worker_node.metadata.labels['topology.kubernetes.io/region'] }}"
 
-- name: Get AWS security group ID for managed cluster nodes
-  register: aws_security_groups
+- name: Extract EC2 instance ID from worker node
+  ansible.builtin.set_fact:
+    ec2_instance_id: "{{ worker_node.spec.providerID.split('/')[-1] }}"
+
+- name: Get EC2 instance details
+  amazon.aws.ec2_instance_info:
+    aws_access_key_id: "{{ aws_access_key_id }}"
+    aws_secret_access_key: "{{ aws_secret_access_key }}"
+    aws_region: "{{ aws_region }}"
+    instance_ids:
+      - "{{ ec2_instance_id }}"
+  register: ec2_instance
+
+- name: Get security group for this cluster's worker nodes
   amazon.aws.ec2_security_group_info:
     aws_access_key_id: "{{ aws_access_key_id }}"
     aws_secret_access_key: "{{ aws_secret_access_key }}"
     aws_region: "{{ aws_region }}"
     filters:
+      group-id: "{{ ec2_instance.instances[0].security_groups | map(attribute='group_id') | list }}"
       "tag:sigs.k8s.io/cluster-api-provider-aws/role": node
+  register: aws_security_groups
 
 - name: Assert that there is only one security group for the worker nodes
   ansible.builtin.assert:
