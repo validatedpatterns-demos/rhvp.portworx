@@ -10,7 +10,7 @@
     cluster_pair_name: "boutique-cluster-pair"
     schedule_policy_name: "boutique-schedule-policy"
     stork_pod_label: "name=stork"
-    stork_binary_path: "/storkctl"
+    stork_binary_path: "/storkctl/linux/storkctl"
     portworx_namespace: "portworx"
 
   tasks:

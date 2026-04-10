@@ -26,13 +26,13 @@
       ansible.builtin.assert:
         that:
           - worker_nodes is defined
-          - worker_nodes | length > 0
+          - worker_nodes.resources | length > 0
         fail_msg: There are no worker nodes present in the cluster with the given kubeconfig
 
     - name: Apply ingress rules to all worker nodes
       ansible.builtin.include_tasks: add-ingress-rules-for-node.yml
       vars:
-        worker_node: "{{ worker_nodes[0] }}"
+        worker_node: "{{ worker_nodes.resources[0] }}"
 
   always:
     - name: Clean up temp directory
