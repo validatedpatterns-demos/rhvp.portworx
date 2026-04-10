@@ -1,0 +1,26 @@
+---
+- name: Establish Portworx Disaster Recovery Pair
+  hosts: localhost
+  connection: local
+  become: true
+
+  vars:
+    dr_namespace: "boutique"
+    migration_interval: 5 # in minutes
+    cluster_pair_name: "boutique-cluster-pair"
+    schedule_policy_name: "boutique-schedule-policy"
+
+  tasks:
+    - name: Generate SchedulePolicy
+      command: >
+        storkctl create schedulepolicy {{ schedule_policy_name }}
+          --namespace {{ dr_namespace }}
+          --interval-minues {{ migration_interval | int }}
+
+    - name: Generate MigrationSchedule
+      command: >
+        storkctl create migrationschedule {{ dr_namespace }}-migration-schedule
+          --namespace {{ dr_namespace }}
+          --cluster-pair {{ cluster_pair_name }}
+          --namespaces {{ dr_namespace }}
+          --schedule-policy-name {{ schedule_policy_name }}

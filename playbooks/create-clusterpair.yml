@@ -13,6 +13,7 @@
     s3_endpoint: "s3.amazonaws.com"
     dr_namespace: "boutique"
     px_cred_name: "aws-dr-creds"
+    cluster_pair_name: "boutique-cluster-pair"
 
   tasks:
     - name: Ensure DR namespace exists on Primary
@@ -48,7 +49,7 @@
 
     - name: Generate ClusterPair
       command: >
-        storkctl create clusterpair {{ dr_namespace }}-clusterpair
+        storkctl create clusterpair {{ cluster_pair_name }}
           --namespace {{ dr_namespace }}
           --src-kube-file {{ primary_kubeconfig }}
           --dest-kube-file {{ secondary_kubeconfig }}
@@ -59,4 +60,3 @@
           --s3-endpoint {{ s3_endpoint }}
           --src-ep {{ primary_ext_ep }}:9001
           --dest-ep {{ secondary_ext_ep }}:9001
-      register: clusterpair_generation
