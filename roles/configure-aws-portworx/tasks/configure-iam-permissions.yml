@@ -14,29 +14,12 @@
   ansible.builtin.set_fact:
     _iam_role_name: "{{ _instance_profile.iam_instance_profiles[0].roles[0].role_name }}"
 
-- name: Ensure Portworx CloudDrive IAM policy exists
-  amazon.aws.iam_managed_policy:
+- name: Attach Portworx CloudDrive inline policy to worker node IAM role
+  amazon.aws.iam_policy:
     aws_access_key_id: "{{ aws_access_key_id }}"
     aws_secret_access_key: "{{ aws_secret_access_key }}"
+    iam_type: role
+    iam_name: "{{ _iam_role_name }}"
     policy_name: Portworx-CloudDrive
-    policy: "{{ px_clouddrive_policy | to_json }}"
-    state: present
-  register: _clouddrive_policy
-
-- name: Get current IAM role details
-  amazon.aws.iam_role_info:
-    aws_access_key_id: "{{ aws_access_key_id }}"
-    aws_secret_access_key: "{{ aws_secret_access_key }}"
-    name: "{{ _iam_role_name }}"
-  register: _iam_role
-
-- name: Attach CloudDrive policy to worker node IAM role
-  amazon.aws.iam_role:
-    aws_access_key_id: "{{ aws_access_key_id }}"
-    aws_secret_access_key: "{{ aws_secret_access_key }}"
-    name: "{{ _iam_role_name }}"
-    assume_role_policy_document: "{{ _iam_role.iam_roles[0].assume_role_policy_document | to_json }}"
-    managed_policies:
-      - "{{ _clouddrive_policy.policy.arn }}"
-    purge_policies: false
+    policy_json: "{{ px_clouddrive_policy | to_json }}"
     state: present
