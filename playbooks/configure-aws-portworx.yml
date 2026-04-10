@@ -1,5 +1,5 @@
 ---
-- name: Basic connectivity test
+- name: Configure AWS for Portworx
   hosts: localhost
   connection: local
   vars:
@@ -9,18 +9,18 @@
     secondary_kubeconfig: "{{ secondary_kubeconfig }}"
 
   tasks:
-    - name: Open worker ports for primary cluster
+    - name: Configure AWS for primary cluster
       ansible.builtin.import_role:
-        name: open-worker-ports
+        name: configure-aws-portworx
       vars:
         kubeconfig: "{{ primary_kubeconfig }}"
         aws_access_key_id: "{{ aws_access_key_id }}"
         aws_secret_access_key: "{{ aws_secret_access_key }}"
         aws_region: "{{ aws_primary_region }}"
 
-    - name: Open worker ports for secondary cluster
+    - name: Configure AWS for secondary cluster
       ansible.builtin.import_role:
-        name: open-worker-ports
+        name: configure-aws-portworx
       vars:
         kubeconfig: "{{ secondary_kubeconfig }}"
         aws_access_key_id: "{{ aws_access_key_id }}"

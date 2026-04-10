@@ -2,10 +2,10 @@
 - name: Create temp directory for kubeconfig
   ansible.builtin.tempfile:
     state: directory
-    prefix: open_worker_ports_
+    prefix: configure_aws_portworx_
   register: _work_dir
 
-- name: Open worker ports
+- name: Configure AWS for Portworx
   block:
     - name: Write kubeconfig to temp file
       ansible.builtin.copy:
@@ -29,10 +29,13 @@
           - worker_nodes.resources | length > 0
         fail_msg: There are no worker nodes present in the cluster with the given kubeconfig
 
-    - name: Apply ingress rules to all worker nodes
+    - name: Configure security group ingress rules
       ansible.builtin.include_tasks: add-ingress-rules-for-node.yml
       vars:
         worker_node: "{{ worker_nodes.resources[0] }}"
+
+    - name: Configure IAM permissions for Portworx CloudDrives
+      ansible.builtin.include_tasks: configure-iam-permissions.yml
 
   always:
     - name: Clean up temp directory
