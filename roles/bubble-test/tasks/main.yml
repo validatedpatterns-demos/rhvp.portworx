@@ -47,7 +47,7 @@
         pod: "{{ _stork_pods.resources[0].metadata.name }}"
         command: >-
           {{ stork_binary_path }} create migration {{ bubble_migration_name }}
-          --clusterPair {{ cluster_pair_name }}
+          --admin-cluster-pair {{ cluster_pair_name }}
           --namespaces {{ dr_namespace }}
           --includeResources=true
           --startApplications=true

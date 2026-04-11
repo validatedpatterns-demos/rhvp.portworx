@@ -17,5 +17,3 @@
     - name: Create cluster pair
       ansible.builtin.import_role:
         name: create-cluster-pair
-      vars:
-        target_namespace: "{{ dr_namespace }}"
