@@ -1,0 +1,45 @@
+---
+- name: Create temp directory for kubeconfig
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: activate_license_
+  register: _work_dir
+
+- name: Activate Portworx license
+  block:
+    - name: Write kubeconfig to temp file
+      ansible.builtin.copy:
+        content: "{{ kubeconfig }}"
+        dest: "{{ _work_dir.path }}/kubeconfig"
+        mode: "0600"
+      no_log: true
+
+    - name: Find a running Portworx pod
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        kind: Pod
+        namespace: "{{ portworx_namespace }}"
+        label_selectors:
+          - "{{ portworx_pod_label }}"
+        field_selectors:
+          - status.phase=Running
+      register: _portworx_pods
+
+    - name: Fail if no Portworx pod found
+      ansible.builtin.fail:
+        msg: "No running Portworx pod found in {{ portworx_namespace }} namespace with label {{ portworx_pod_label }}"
+      when: _portworx_pods.resources | length == 0
+
+    - name: Activate DR license
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _portworx_pods.resources[0].metadata.name }}"
+        command: /opt/pwx/bin/pxctl license activate saas --key {{ dr_license }}
+      no_log: true
+
+  always:
+    - name: Clean up temp directory
+      ansible.builtin.file:
+        path: "{{ _work_dir.path }}"
+        state: absent

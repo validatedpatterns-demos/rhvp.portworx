@@ -1,0 +1,2 @@
+portworx_namespace: "portworx"
+portworx_pod_label: "name=portworx"

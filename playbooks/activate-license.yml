@@ -1,0 +1,22 @@
+---
+- name: Activate Portworx DR License
+  hosts: localhost
+  connection: local
+
+  vars:
+    primary_kubeconfig: ""
+    secondary_kubeconfig: ""
+    dr_license: ""
+
+  tasks:
+    - name: Activate license on primary cluster
+      ansible.builtin.import_role:
+        name: activate-license
+      vars:
+        kubeconfig: "{{ primary_kubeconfig }}"
+
+    - name: Activate license on secondary cluster
+      ansible.builtin.import_role:
+        name: activate-license
+      vars:
+        kubeconfig: "{{ secondary_kubeconfig }}"
