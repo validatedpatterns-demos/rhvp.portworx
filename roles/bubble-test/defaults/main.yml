@@ -5,3 +5,11 @@ bubble_clone_name: "boutique-bubble-clone"
 portworx_namespace: "portworx"
 stork_pod_label: "name=stork"
 stork_binary_path: "/storkctl/linux/storkctl"
+stork_clone_role_name: "stork-bubble-test-clone"
+stork_clone_rbac_rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]

@@ -24,6 +24,35 @@
           metadata:
             name: "{{ bubble_namespace }}"
 
+    - name: Create ClusterRole for Stork clone operations
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: "{{ stork_clone_role_name }}"
+          rules: "{{ stork_clone_rbac_rules }}"
+
+    - name: Bind ClusterRole to Stork service account
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: "{{ stork_clone_role_name }}"
+          subjects:
+            - kind: ServiceAccount
+              name: stork
+              namespace: "{{ portworx_namespace }}"
+          roleRef:
+            kind: ClusterRole
+            name: "{{ stork_clone_role_name }}"
+            apiGroup: rbac.authorization.k8s.io
+
     - name: Find a running Stork pod
       kubernetes.core.k8s_info:
         kubeconfig: "{{ _work_dir.path }}/kubeconfig"

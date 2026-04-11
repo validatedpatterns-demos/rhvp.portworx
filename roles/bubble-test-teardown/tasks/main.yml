@@ -52,6 +52,22 @@
         name: "{{ bubble_namespace }}"
         state: absent
 
+    - name: Delete Stork clone ClusterRoleBinding
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        name: "{{ stork_clone_role_name }}"
+        state: absent
+
+    - name: Delete Stork clone ClusterRole
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        name: "{{ stork_clone_role_name }}"
+        state: absent
+
   always:
     - name: Clean up temp directory
       ansible.builtin.file:
