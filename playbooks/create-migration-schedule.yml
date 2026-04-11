@@ -5,74 +5,10 @@
 
   vars:
     primary_kubeconfig: ""
-    dr_namespace: "boutique"
-    migration_interval: 5 # in minutes
-    cluster_pair_name: "boutique-cluster-pair"
-    schedule_policy_name: "boutique-schedule-policy"
-    stork_pod_label: "name=stork"
-    stork_binary_path: "/storkctl/linux/storkctl"
-    portworx_namespace: "portworx"
 
   tasks:
-    - name: Create temp directory for working files
-      ansible.builtin.tempfile:
-        state: directory
-        prefix: px_migration_
-      register: work_dir
-
     - name: Create migration schedule
-      block:
-        - name: Write primary kubeconfig to temp file
-          ansible.builtin.copy:
-            content: "{{ primary_kubeconfig }}"
-            dest: "{{ work_dir.path }}/primary-kubeconfig"
-            mode: "0600"
-          no_log: true
-
-        - name: Find a running Stork pod
-          kubernetes.core.k8s_info:
-            kubeconfig: "{{ work_dir.path }}/primary-kubeconfig"
-            kind: Pod
-            namespace: "{{ portworx_namespace }}"
-            label_selectors:
-              - "{{ stork_pod_label }}"
-            field_selectors:
-              - status.phase=Running
-          register: stork_pods
-
-        - name: Fail if no Stork pod found
-          ansible.builtin.fail:
-            msg: "No running Stork pod found in {{ portworx_namespace }} namespace with label {{ stork_pod_label }}"
-          when: stork_pods.resources | length == 0
-
-        - name: Set Stork pod name
-          ansible.builtin.set_fact:
-            stork_pod: "{{ stork_pods.resources[0].metadata.name }}"
-
-        - name: Create SchedulePolicy
-          kubernetes.core.k8s_exec:
-            kubeconfig: "{{ work_dir.path }}/primary-kubeconfig"
-            namespace: "{{ portworx_namespace }}"
-            pod: "{{ stork_pod }}"
-            command: >-
-              {{ stork_binary_path }} create schedulepolicy {{ schedule_policy_name }}
-              --namespace {{ dr_namespace }}
-              --interval-minutes {{ migration_interval | int }}
-
-        - name: Create MigrationSchedule
-          kubernetes.core.k8s_exec:
-            kubeconfig: "{{ work_dir.path }}/primary-kubeconfig"
-            namespace: "{{ portworx_namespace }}"
-            pod: "{{ stork_pod }}"
-            command: >-
-              {{ stork_binary_path }} create migrationschedule {{ dr_namespace }}-migration-schedule
-              --namespace {{ dr_namespace }}
-              --admin-cluster-pair {{ cluster_pair_name }}
-              --namespaces {{ dr_namespace }}
-              --schedule-policy-name {{ schedule_policy_name }}
-
-      always:
-        - name: Clean up temp directory
-          ansible.builtin.file:
-            path: "{{ work_dir.path }}"
-            state: absent
+      ansible.builtin.include_role:
+        name: create-migration-schedule
+      vars:
+        kubeconfig: "{{ primary_kubeconfig }}"

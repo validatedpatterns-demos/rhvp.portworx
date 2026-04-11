@@ -1,0 +1,81 @@
+---
+- name: Create temp directory for working files
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: px_migration_
+  register: _work_dir
+
+- name: Create migration schedule
+  block:
+    - name: Write kubeconfig to temp file
+      ansible.builtin.copy:
+        content: "{{ kubeconfig }}"
+        dest: "{{ _work_dir.path }}/kubeconfig"
+        mode: "0600"
+      no_log: true
+
+    - name: Find a running Stork pod
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        kind: Pod
+        namespace: "{{ portworx_namespace }}"
+        label_selectors:
+          - "{{ stork_pod_label }}"
+        field_selectors:
+          - status.phase=Running
+      register: _stork_pods
+
+    - name: Fail if no Stork pod found
+      ansible.builtin.fail:
+        msg: "No running Stork pod found in {{ portworx_namespace }} namespace with label {{ stork_pod_label }}"
+      when: _stork_pods.resources | length == 0
+
+    - name: Set Stork pod name
+      ansible.builtin.set_fact:
+        _stork_pod: "{{ _stork_pods.resources[0].metadata.name }}"
+
+    - name: Create SchedulePolicy
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _stork_pod }}"
+        command: >-
+          {{ stork_binary_path }} create schedulepolicy {{ schedule_policy_name }}
+          --namespace {{ dr_namespace }}
+          --interval-minutes {{ migration_interval | int }}
+      register: _create_sp_result
+      failed_when: false
+
+    - name: Verify schedule policy was created or already exists
+      ansible.builtin.fail:
+        msg: "Failed to create schedule policy: {{ _create_sp_result.stderr | default(_create_sp_result.stdout | default('unknown error')) }}"
+      when:
+        - _create_sp_result.return_code != 0
+        - "'already exists' not in (_create_sp_result.stderr | default('') + _create_sp_result.stdout | default(''))"
+
+    - name: Create MigrationSchedule
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _stork_pod }}"
+        command: >-
+          {{ stork_binary_path }} create migrationschedule {{ dr_namespace }}-migration-schedule
+          --namespace {{ dr_namespace }}
+          --admin-cluster-pair {{ cluster_pair_name }}
+          --namespaces {{ dr_namespace }}
+          --schedule-policy-name {{ schedule_policy_name }}
+      register: _create_ms_result
+      failed_when: false
+
+    - name: Verify migration schedule was created or already exists
+      ansible.builtin.fail:
+        msg: "Failed to create migration schedule: {{ _create_ms_result.stderr | default(_create_ms_result.stdout | default('unknown error')) }}"
+      when:
+        - _create_ms_result.return_code != 0
+        - "'already exists' not in (_create_ms_result.stderr | default('') + _create_ms_result.stdout | default(''))"
+
+  always:
+    - name: Clean up temp directory
+      ansible.builtin.file:
+        path: "{{ _work_dir.path }}"
+        state: absent

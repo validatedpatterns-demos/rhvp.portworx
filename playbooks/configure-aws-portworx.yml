@@ -10,7 +10,7 @@
 
   tasks:
     - name: Configure AWS for primary cluster
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: configure-aws-portworx
       vars:
         kubeconfig: "{{ primary_kubeconfig }}"
@@ -19,7 +19,7 @@
         aws_region: "{{ aws_primary_region }}"
 
     - name: Configure AWS for secondary cluster
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: configure-aws-portworx
       vars:
         kubeconfig: "{{ secondary_kubeconfig }}"

@@ -15,5 +15,5 @@
 
   tasks:
     - name: Create cluster pair
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: create-cluster-pair

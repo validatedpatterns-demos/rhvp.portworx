@@ -10,13 +10,15 @@
 
   tasks:
     - name: Activate license on primary cluster
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: activate-license
       vars:
         kubeconfig: "{{ primary_kubeconfig }}"
+      register: _primary_result
 
     - name: Activate license on secondary cluster
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: activate-license
       vars:
         kubeconfig: "{{ secondary_kubeconfig }}"
+      register: _secondary_result

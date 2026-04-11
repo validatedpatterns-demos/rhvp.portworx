@@ -1,0 +1,44 @@
+---
+- name: Import Spoke Cluster to ACM Hub
+  hosts: localhost
+  connection: local
+
+  vars:
+    primary_kubeconfig: ""
+    secondary_kubeconfig: ""
+
+  tasks:
+    - name: Create temp directory for kubeconfigs
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: acm_import_
+      register: _work_dir
+
+    - name: Import spoke cluster
+      block:
+        - name: Write hub kubeconfig to temp file
+          ansible.builtin.copy:
+            content: "{{ primary_kubeconfig }}"
+            dest: "{{ _work_dir.path }}/hub-kubeconfig"
+            mode: "0600"
+          no_log: true
+
+        - name: Write spoke kubeconfig to temp file
+          ansible.builtin.copy:
+            content: "{{ secondary_kubeconfig }}"
+            dest: "{{ _work_dir.path }}/spoke-kubeconfig"
+            mode: "0600"
+          no_log: true
+
+        - name: Import spoke cluster to ACM hub
+          ansible.builtin.include_role:
+            name: acm_import
+          vars:
+            HUBCONFIG: "{{ _work_dir.path }}/hub-kubeconfig"
+            SPOKECONFIG: "{{ _work_dir.path }}/spoke-kubeconfig"
+
+      always:
+        - name: Clean up temp directory
+          ansible.builtin.file:
+            path: "{{ _work_dir.path }}"
+            state: absent
