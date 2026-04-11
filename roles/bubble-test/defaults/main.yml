@@ -8,7 +8,7 @@ stork_binary_path: "/storkctl/linux/storkctl"
 stork_clone_role_name: "stork-bubble-test-clone"
 stork_clone_rbac_rules:
   - apiGroups: [""]
-    resources: ["persistentvolumes"]
+    resources: ["persistentvolumes", "persistentvolumeclaims"]
     verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
   - apiGroups: ["apps"]
     resources: ["deployments"]
