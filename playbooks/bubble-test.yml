@@ -7,6 +7,8 @@
     secondary_kubeconfig: ""
     bubble_namespace: "boutique-bubble"
     cluster_pair_name: "boutique-cluster-pair"
+    portworx_namespace: "portworx"
+    dr_namespace: "boutique"
 
   tasks:
     - name: Run bubble test migration
@@ -14,5 +16,3 @@
         name: bubble-test
       vars:
         kubeconfig: "{{ secondary_kubeconfig }}"
-        cluster_pair_name: "{{ cluster_pair_name }}"
-        bubble_namespace: "{{ bubble_namespace }}"
