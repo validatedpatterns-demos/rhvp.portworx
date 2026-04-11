@@ -16,7 +16,6 @@
         kubeconfig: "{{ primary_kubeconfig }}"
         aws_access_key_id: "{{ aws_access_key_id }}"
         aws_secret_access_key: "{{ aws_secret_access_key }}"
-        aws_region: "{{ aws_primary_region }}"
 
     - name: Configure AWS for secondary cluster
       ansible.builtin.include_role:
@@ -25,4 +24,3 @@
         kubeconfig: "{{ secondary_kubeconfig }}"
         aws_access_key_id: "{{ aws_access_key_id }}"
         aws_secret_access_key: "{{ aws_secret_access_key }}"
-        aws_region: "{{ aws_secondary_region }}"
