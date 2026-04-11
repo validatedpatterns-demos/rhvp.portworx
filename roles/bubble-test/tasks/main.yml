@@ -145,6 +145,30 @@
         msg: "ApplicationClone failed: {{ _clone_status.resources[0].status }}"
       when: _clone_status.resources[0].status.status not in ["Successful", "Successful with Warnings", "PartialSuccess"]
 
+    - name: Get all deployments in bubble namespace
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ bubble_namespace }}"
+      register: _bubble_deployments
+
+    - name: Scale all deployments to 1 replica
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: "{{ item.metadata.name }}"
+            namespace: "{{ bubble_namespace }}"
+          spec:
+            replicas: 1
+      loop: "{{ _bubble_deployments.resources }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+
   always:
     - name: Clean up temp directory
       ansible.builtin.file:
