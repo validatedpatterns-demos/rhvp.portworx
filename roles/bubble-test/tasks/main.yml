@@ -1,0 +1,50 @@
+---
+- name: Create temp directory for kubeconfig
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: bubble_test_
+  register: _work_dir
+
+- name: Run bubble test migration
+  block:
+    - name: Write kubeconfig to temp file
+      ansible.builtin.copy:
+        content: "{{ kubeconfig }}"
+        dest: "{{ _work_dir.path }}/kubeconfig"
+        mode: "0600"
+      no_log: true
+
+    - name: Find a running Stork pod
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        kind: Pod
+        namespace: "{{ portworx_namespace }}"
+        label_selectors:
+          - "{{ stork_pod_label }}"
+        field_selectors:
+          - status.phase=Running
+      register: _stork_pods
+
+    - name: Fail if no Stork pod found
+      ansible.builtin.fail:
+        msg: "No running Stork pod found in {{ portworx_namespace }} namespace with label {{ stork_pod_label }}"
+      when: _stork_pods.resources | length == 0
+
+    - name: Create bubble test migration
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _stork_pods.resources[0].metadata.name }}"
+        command: >-
+          {{ stork_binary_path }} create migration {{ bubble_migration_name }}
+          --cluster-pair {{ cluster_pair_name }}
+          --namespaces {{ dr_namespace }}
+          --includeResources=true
+          --startApplications=true
+          --namespace {{ bubble_namespace }}
+
+  always:
+    - name: Clean up temp directory
+      ansible.builtin.file:
+        path: "{{ _work_dir.path }}"
+        state: absent

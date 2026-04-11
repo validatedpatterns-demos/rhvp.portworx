@@ -1,0 +1,21 @@
+---
+- name: Establish Portworx Disaster Recovery Pair
+  hosts: localhost
+  connection: local
+
+  vars:
+    primary_kubeconfig: ""
+    secondary_kubeconfig: ""
+    aws_access_key_id: ""
+    aws_secret_access_key: ""
+    s3_region: "us-east-2"
+    s3_endpoint: "s3.amazonaws.com"
+    dr_namespace: "boutique"
+    cluster_pair_name: "boutique-cluster-pair"
+
+  tasks:
+    - name: Create cluster pair
+      ansible.builtin.import_role:
+        name: create-cluster-pair
+      vars:
+        target_namespace: "{{ dr_namespace }}"

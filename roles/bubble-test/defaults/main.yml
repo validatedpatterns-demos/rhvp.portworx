@@ -1,0 +1,7 @@
+portworx_namespace: "portworx"
+stork_pod_label: "name=stork"
+stork_binary_path: "/storkctl/linux/storkctl"
+bubble_namespace: "boutique-bubble"
+bubble_migration_name: "boutique-bubble-test"
+cluster_pair_name: "bubble-test-cluster-pair"
+dr_namespace: "boutique"

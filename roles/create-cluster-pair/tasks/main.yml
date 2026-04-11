@@ -1,0 +1,125 @@
+---
+- name: Create temp directory for working files
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: px_cluster-pair_
+  register: _work_dir
+
+- name: Create cluster pair
+  block:
+    - name: Write primary kubeconfig to temp file
+      ansible.builtin.copy:
+        content: "{{ primary_kubeconfig }}"
+        dest: "{{ _work_dir.path }}/primary-kubeconfig"
+        mode: "0600"
+      no_log: true
+
+    - name: Write secondary kubeconfig to temp file
+      ansible.builtin.copy:
+        content: "{{ secondary_kubeconfig }}"
+        dest: "{{ _work_dir.path }}/secondary-kubeconfig"
+        mode: "0600"
+      no_log: true
+
+    - name: Ensure target namespace exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/primary-kubeconfig"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ target_namespace }}"
+
+    - name: Get Primary NLB Hostname
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ _work_dir.path }}/primary-kubeconfig"
+        kind: Service
+        name: portworx-api
+        namespace: "{{ portworx_namespace }}"
+      register: _primary_svc
+
+    - name: Get Secondary NLB Hostname
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ _work_dir.path }}/secondary-kubeconfig"
+        kind: Service
+        name: portworx-api
+        namespace: "{{ portworx_namespace }}"
+      register: _secondary_svc
+
+    - name: Set NLB Hostname Facts
+      ansible.builtin.set_fact:
+        _primary_ext_ep: "{{ _primary_svc.resources[0].status.loadBalancer.ingress[0].hostname }}"
+        _secondary_ext_ep: "{{ _secondary_svc.resources[0].status.loadBalancer.ingress[0].hostname }}"
+
+    - name: Find a running Stork pod
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ _work_dir.path }}/primary-kubeconfig"
+        kind: Pod
+        namespace: "{{ portworx_namespace }}"
+        label_selectors:
+          - "{{ stork_pod_label }}"
+        field_selectors:
+          - status.phase=Running
+      register: _stork_pods
+
+    - name: Fail if no Stork pod found
+      ansible.builtin.fail:
+        msg: "No running Stork pod found in {{ portworx_namespace }} namespace with label {{ stork_pod_label }}"
+      when: _stork_pods.resources | length == 0
+
+    - name: Set Stork pod name
+      ansible.builtin.set_fact:
+        _stork_pod: "{{ _stork_pods.resources[0].metadata.name }}"
+
+    - name: Write primary kubeconfig into Stork pod
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/primary-kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _stork_pod }}"
+        command: >-
+          sh -c 'echo "{{ primary_kubeconfig | b64encode }}" | base64 -d > /tmp/primary-kubeconfig'
+      no_log: true
+
+    - name: Write secondary kubeconfig into Stork pod
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/primary-kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _stork_pod }}"
+        command: >-
+          sh -c 'echo "{{ secondary_kubeconfig | b64encode }}" | base64 -d > /tmp/secondary-kubeconfig'
+      no_log: true
+
+    - name: Create cluster-pair via storkctl in Stork pod
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/primary-kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _stork_pod }}"
+        command: >-
+          {{ stork_binary_path }} create cluster-pair {{ cluster_pair_name }}
+          --namespace {{ target_namespace }}
+          --src-kube-file /tmp/primary-kubeconfig
+          --dest-kube-file /tmp/secondary-kubeconfig
+          --provider s3
+          --s3-access-key {{ aws_access_key_id }}
+          --s3-secret-key {{ aws_secret_access_key }}
+          --s3-region {{ s3_region }}
+          --s3-endpoint {{ s3_endpoint }}
+          --src-ep {{ _primary_ext_ep }}:9001
+          --dest-ep {{ _secondary_ext_ep }}:9001
+      no_log: true
+
+  always:
+    - name: Clean up kubeconfigs from Stork pod
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/primary-kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _stork_pod | default('') }}"
+        command: rm -f /tmp/primary-kubeconfig /tmp/secondary-kubeconfig
+      when: _stork_pod is defined
+      ignore_errors: true
+
+    - name: Clean up temp directory
+      ansible.builtin.file:
+        path: "{{ _work_dir.path }}"
+        state: absent

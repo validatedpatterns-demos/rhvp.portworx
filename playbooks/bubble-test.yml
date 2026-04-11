@@ -1,0 +1,27 @@
+---
+- name: Run Portworx DR Bubble Test
+  hosts: localhost
+  connection: local
+
+  vars:
+    primary_kubeconfig: ""
+    secondary_kubeconfig: ""
+    aws_access_key_id: ""
+    aws_secret_access_key: ""
+    bubble_namespace: "boutique-bubble"
+    bubble_cluster_pair_name: "bubble-test-cluster-pair"
+
+  tasks:
+    - name: Create cluster pair for bubble test
+      ansible.builtin.import_role:
+        name: create-cluster-pair
+      vars:
+        target_namespace: "{{ bubble_namespace }}"
+        cluster_pair_name: "{{ bubble_cluster_pair_name }}"
+
+    - name: Run bubble test migration
+      ansible.builtin.import_role:
+        name: bubble-test
+      vars:
+        kubeconfig: "{{ primary_kubeconfig }}"
+        cluster_pair_name: "{{ bubble_cluster_pair_name }}"
