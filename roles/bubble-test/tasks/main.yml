@@ -24,7 +24,7 @@
           metadata:
             name: "{{ bubble_namespace }}"
 
-    - name: Create ClusterRole for Stork clone operations
+    - name: Create ClusterRole for PV access
       kubernetes.core.k8s:
         kubeconfig: "{{ _work_dir.path }}/kubeconfig"
         state: present
@@ -33,7 +33,7 @@
           kind: ClusterRole
           metadata:
             name: "{{ stork_clone_role_name }}"
-          rules: "{{ stork_clone_rbac_rules }}"
+          rules: "{{ stork_clone_cluster_rules }}"
 
     - name: Bind ClusterRole to Stork service account
       kubernetes.core.k8s:
@@ -50,6 +50,37 @@
               namespace: "{{ portworx_namespace }}"
           roleRef:
             kind: ClusterRole
+            name: "{{ stork_clone_role_name }}"
+            apiGroup: rbac.authorization.k8s.io
+
+    - name: Create Role for namespaced resources in bubble namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: "{{ stork_clone_role_name }}"
+            namespace: "{{ bubble_namespace }}"
+          rules: "{{ stork_clone_namespace_rules }}"
+
+    - name: Bind Role to Stork service account in bubble namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: "{{ stork_clone_role_name }}"
+            namespace: "{{ bubble_namespace }}"
+          subjects:
+            - kind: ServiceAccount
+              name: stork
+              namespace: "{{ portworx_namespace }}"
+          roleRef:
+            kind: Role
             name: "{{ stork_clone_role_name }}"
             apiGroup: rbac.authorization.k8s.io
 
