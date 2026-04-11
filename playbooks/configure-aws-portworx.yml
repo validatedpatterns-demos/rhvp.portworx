@@ -14,13 +14,9 @@
         name: configure-aws-portworx
       vars:
         kubeconfig: "{{ primary_kubeconfig }}"
-        aws_access_key_id: "{{ aws_access_key_id }}"
-        aws_secret_access_key: "{{ aws_secret_access_key }}"
 
     - name: Configure AWS for secondary cluster
       ansible.builtin.include_role:
         name: configure-aws-portworx
       vars:
         kubeconfig: "{{ secondary_kubeconfig }}"
-        aws_access_key_id: "{{ aws_access_key_id }}"
-        aws_secret_access_key: "{{ aws_secret_access_key }}"

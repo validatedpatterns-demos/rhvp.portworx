@@ -1,5 +1,5 @@
 ---
-- name: Run Portworx DR Bubble Test
+- name: Tear Down Portworx DR Bubble Test
   hosts: localhost
   connection: local
 
@@ -9,8 +9,8 @@
     aws_secret_access_key: ""
 
   tasks:
-    - name: Run bubble test backup and restore
+    - name: Tear down bubble test environment
       ansible.builtin.include_role:
-        name: bubble-test
+        name: bubble-test-teardown
       vars:
         kubeconfig: "{{ secondary_kubeconfig }}"

@@ -1,0 +1,86 @@
+---
+- name: Create temp directory for kubeconfig
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: bubble_teardown_
+  register: _work_dir
+
+- name: Tear down bubble test
+  block:
+    - name: Write kubeconfig to temp file
+      ansible.builtin.copy:
+        content: "{{ kubeconfig }}"
+        dest: "{{ _work_dir.path }}/kubeconfig"
+        mode: "0600"
+      no_log: true
+
+    - name: Get cluster identity
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        api_version: config.openshift.io/v1
+        kind: DNS
+        name: cluster
+      register: _cluster_dns
+
+    - name: Set bucket name from cluster identity
+      ansible.builtin.set_fact:
+        _bubble_bucket_name: "{{ s3_bucket_prefix }}-{{ _cluster_dns.resources[0].spec.baseDomain.split('.')[0] }}"
+
+    - name: Delete ApplicationRestore
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        api_version: stork.libopenstorage.org/v1alpha1
+        kind: ApplicationRestore
+        name: "{{ bubble_restore_name }}"
+        namespace: "{{ dr_namespace }}"
+        state: absent
+
+    - name: Delete ApplicationBackup
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        api_version: stork.libopenstorage.org/v1alpha1
+        kind: ApplicationBackup
+        name: "{{ bubble_backup_name }}"
+        namespace: "{{ dr_namespace }}"
+        state: absent
+
+    - name: Delete BackupLocation
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        api_version: stork.libopenstorage.org/v1alpha1
+        kind: BackupLocation
+        name: "{{ bubble_backup_location_name }}"
+        namespace: "{{ dr_namespace }}"
+        state: absent
+
+    - name: Delete S3 credentials secret
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        api_version: v1
+        kind: Secret
+        name: "{{ bubble_backup_location_name }}-s3-creds"
+        namespace: "{{ dr_namespace }}"
+        state: absent
+
+    - name: Delete bubble namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        api_version: v1
+        kind: Namespace
+        name: "{{ bubble_namespace }}"
+        state: absent
+
+    - name: Delete S3 bucket and all contents
+      amazon.aws.s3_bucket:
+        aws_access_key_id: "{{ aws_access_key_id }}"
+        aws_secret_access_key: "{{ aws_secret_access_key }}"
+        name: "{{ _bubble_bucket_name }}"
+        state: absent
+        region: "{{ s3_region }}"
+        force: true
+
+  always:
+    - name: Clean up temp directory
+      ansible.builtin.file:
+        path: "{{ _work_dir.path }}"
+        state: absent
