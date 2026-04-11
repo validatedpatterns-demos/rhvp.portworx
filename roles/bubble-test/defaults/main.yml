@@ -11,9 +11,6 @@ stork_clone_cluster_rules:
     resources: ["persistentvolumes"]
     verbs: ["create", "get", "list", "watch"]
 stork_clone_namespace_rules:
-  - apiGroups: [""]
-    resources: ["persistentvolumeclaims"]
-    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]

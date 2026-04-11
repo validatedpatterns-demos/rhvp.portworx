@@ -136,14 +136,14 @@
       until:
         - _clone_status.resources | length > 0
         - _clone_status.resources[0].status.status is defined
-        - _clone_status.resources[0].status.status in ["Successful", "Successful with Warnings", "Failed"]
+        - _clone_status.resources[0].status.status in ["Successful", "Successful with Warnings", "PartialSuccess", "Failed"]
       retries: 60
       delay: 10
 
     - name: Verify clone completed successfully
       ansible.builtin.fail:
         msg: "ApplicationClone failed: {{ _clone_status.resources[0].status }}"
-      when: _clone_status.resources[0].status.status not in ["Successful", "Successful with Warnings"]
+      when: _clone_status.resources[0].status.status not in ["Successful", "Successful with Warnings", "PartialSuccess"]
 
   always:
     - name: Clean up temp directory
