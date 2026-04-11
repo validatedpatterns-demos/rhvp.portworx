@@ -107,7 +107,7 @@
           --s3-endpoint {{ s3_endpoint }}
           --src-ep {{ _primary_ext_ep }}:9001
           --dest-ep {{ _secondary_ext_ep }}:9001
-      no_log: true
+      # no_log: true
 
   always:
     - name: Clean up kubeconfigs from Stork pod
