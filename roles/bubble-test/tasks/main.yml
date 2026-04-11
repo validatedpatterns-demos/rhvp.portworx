@@ -76,21 +76,45 @@
             secretConfig: "{{ bubble_backup_location_name }}-s3-creds"
             sync: false
 
-    - name: Create ApplicationBackup
-      kubernetes.core.k8s:
+    - name: Find a running Stork pod
+      kubernetes.core.k8s_info:
         kubeconfig: "{{ _work_dir.path }}/kubeconfig"
-        state: present
-        definition:
-          apiVersion: stork.libopenstorage.org/v1alpha1
-          kind: ApplicationBackup
-          metadata:
-            name: "{{ bubble_backup_name }}"
-            namespace: "{{ dr_namespace }}"
-          spec:
-            backupLocation: "{{ bubble_backup_location_name }}"
-            namespaces:
-              - "{{ dr_namespace }}"
-            reclaimPolicy: Delete
+        kind: Pod
+        namespace: "{{ portworx_namespace }}"
+        label_selectors:
+          - "{{ stork_pod_label }}"
+        field_selectors:
+          - status.phase=Running
+      register: _stork_pods
+
+    - name: Fail if no Stork pod found
+      ansible.builtin.fail:
+        msg: "No running Stork pod found in {{ portworx_namespace }} namespace with label {{ stork_pod_label }}"
+      when: _stork_pods.resources | length == 0
+
+    - name: Set Stork pod name
+      ansible.builtin.set_fact:
+        _stork_pod: "{{ _stork_pods.resources[0].metadata.name }}"
+
+    - name: Create ApplicationBackup via storkctl
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _stork_pod }}"
+        command: >-
+          {{ stork_binary_path }} create applicationbackup {{ bubble_backup_name }}
+          --backupLocation {{ bubble_backup_location_name }}
+          --namespaces {{ dr_namespace }}
+          --namespace {{ dr_namespace }}
+      register: _create_backup_result
+      failed_when: false
+
+    - name: Verify backup was created or already exists
+      ansible.builtin.fail:
+        msg: "Failed to create ApplicationBackup: {{ _create_backup_result.stderr | default(_create_backup_result.stdout | default('unknown error')) }}"
+      when:
+        - _create_backup_result.return_code != 0
+        - "'already exists' not in (_create_backup_result.stderr | default('') + _create_backup_result.stdout | default(''))"
 
     - name: Wait for ApplicationBackup to complete
       kubernetes.core.k8s_info:
@@ -112,22 +136,37 @@
         msg: "ApplicationBackup failed: {{ _backup_status.resources[0].status }}"
       when: _backup_status.resources[0].status.status != "Successful"
 
-    - name: Create ApplicationRestore
+    - name: Ensure bubble namespace exists
       kubernetes.core.k8s:
         kubeconfig: "{{ _work_dir.path }}/kubeconfig"
         state: present
         definition:
-          apiVersion: stork.libopenstorage.org/v1alpha1
-          kind: ApplicationRestore
+          apiVersion: v1
+          kind: Namespace
           metadata:
-            name: "{{ bubble_restore_name }}"
-            namespace: "{{ dr_namespace }}"
-          spec:
-            backupName: "{{ bubble_backup_name }}"
-            backupLocation: "{{ bubble_backup_location_name }}"
-            namespaceMapping:
-              "{{ dr_namespace }}": "{{ bubble_namespace }}"
-            replacePolicy: Delete
+            name: "{{ bubble_namespace }}"
+
+    - name: Create ApplicationRestore via storkctl
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ _work_dir.path }}/kubeconfig"
+        namespace: "{{ portworx_namespace }}"
+        pod: "{{ _stork_pod }}"
+        command: >-
+          {{ stork_binary_path }} create applicationrestore {{ bubble_restore_name }}
+          --backupLocation {{ bubble_backup_location_name }}
+          --backupName {{ bubble_backup_name }}
+          --namespaceMapping "{{ dr_namespace }}:{{ bubble_namespace }}"
+          --replacePolicy Delete
+          --namespace {{ dr_namespace }}
+      register: _create_restore_result
+      failed_when: false
+
+    - name: Verify restore was created or already exists
+      ansible.builtin.fail:
+        msg: "Failed to create ApplicationRestore: {{ _create_restore_result.stderr | default(_create_restore_result.stdout | default('unknown error')) }}"
+      when:
+        - _create_restore_result.return_code != 0
+        - "'already exists' not in (_create_restore_result.stderr | default('') + _create_restore_result.stdout | default(''))"
 
     - name: Wait for ApplicationRestore to complete
       kubernetes.core.k8s_info:
