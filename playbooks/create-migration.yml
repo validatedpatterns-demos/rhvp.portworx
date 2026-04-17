@@ -12,19 +12,10 @@
     cluster_pair: "admin-cluster-pair"
 
   tasks:
-    - name: Normalize use_admin_cluster_pair
-      ansible.builtin.set_fact:
-        use_admin_cluster_pair: "{{ use_admin_cluster_pair | string | trim | lower }}"
-
-    - name: Validate use_admin_cluster_pair value
-      ansible.builtin.fail:
-        msg: "'use_admin_cluster_pair' must be 'yes' or 'no', got '{{ use_admin_cluster_pair }}'"
-      when: use_admin_cluster_pair not in ['yes', 'no', 'true', 'false']
-
     - name: Create migration
       ansible.builtin.include_role:
         name: create-migration
       vars:
         kubeconfig: "{{ primary_kubeconfig }}"
-        admin_cluster_pair: "{{ cluster_pair if use_admin_cluster_pair in ['yes', 'true'] else '' }}"
-        cluster_pair: "{{ '' if use_admin_cluster_pair in ['yes', 'true'] else cluster_pair }}"
+        admin_cluster_pair: "{{ cluster_pair if use_admin_cluster_pair | bool else '' }}"
+        cluster_pair: "{{ '' if use_admin_cluster_pair | bool else cluster_pair }}"
