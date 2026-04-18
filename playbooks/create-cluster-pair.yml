@@ -9,7 +9,7 @@
     aws_access_key_id: ""
     aws_secret_access_key: ""
     s3_region: "us-east-2"
-    s3_endpoint: "s3.amazonaws.com"
+    s3_endpoint: "minio.minio.svc.cluster.local:9000"
     portworx_namespace: "portworx"
     cluster_pair_name: "boutique-cluster-pair"
     target_namespace: "boutique"
