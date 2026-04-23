@@ -107,7 +107,7 @@
           --s3-endpoint {{ s3_endpoint }}
           --src-ep {{ _primary_ext_ep }}:9001
           --dest-ep {{ _secondary_ext_ep }}:9001
-          --disable-ssl {{ disable_ssl }}
+          --disable-ssl={{ disable_ssl }}
       register: _create_cp_result
       # no_log: true
       failed_when: false
